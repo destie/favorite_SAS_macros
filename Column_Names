@@ -1,0 +1,25 @@
+/*Selects column names into a list*/
+%macro listcolumnames(dataset, wherecondition, description);
+ 
+     %global numvars_&description vars_&description;
+ 
+     proc contents data=&dataset noprint out=varlist_&description.(keep=name rename=(name=name2));
+     run;
+ 
+     data varlist_&description.;
+                set varlist_&description.;
+                name = lowcase(name2);
+                drop name2;
+                if &wherecondition;
+     run;
+ 
+     proc sql;
+           select name into: vars_&description separated by " "
+           from varlist_&description.;
+     quit;
+ 
+     %put NOTE: VARIABLE LIST NAME: vars_&description;
+     %put NOTE: NUMBER OF %upcase(&wherecondition) VARIABLES: &&numvars_&description;
+     %put NOTE: %upcase(&wherecondition) VARIABLES: &&vars_&description;
+ 
+%mend;
