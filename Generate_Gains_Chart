@@ -1,0 +1,39 @@
+*%macro Generate_Gains_Chart(new, dset, boom, pos, hold);
+
+PROC SORT data= &dset; BY descending &pred ; run;
+ 
+PROC SQL; select sum(&pos) into:sum_pos from Scored2; run;
+PROC SQL; select sum(1) into:tot from Scored2; run;
+ 
+data results_&new; SET Scored2;
+cum_pop = _N_; RETAIN cum_positive_&new cum_pos_pct_&new cum_pop_pct_&new;
+if _N_ = 1 then do;
+     cum_positive_&new = 0;
+     cum_pos_pct_&new = 0;
+     cum_pop_pct_&new = 0;
+end;
+If &pos = 1 then cum_positive_&new = cum_positive_&new + 1;
+cum_pos_pct_&new = cum_positive_&new/ &sum_pos;
+cum_pop_pct = cum_pop / &tot;
+run;
+ 
+ 
+PROC SQL;
+create table tempresults_&new as
+SELECT  input(put (cum_pop_pct, 10.2),10.2) as cum_pop_pct, 
+           max(cum_pos_pct_&new) as cum_pos_pct_&new
+FROM results_&new
+GROUP BY 1;
+quit;
+ 
+proc sgplot data = tempresults_&new;
+Title "Gains comparison of holdout models";
+series x= cum_pop_pct y= cum_pos_pct_&new /LEGENDLABEL= "Effects of Date on Holdout_1";
+series x= cum_pop_pct y= cum_pop_pct /LEGENDLABEL= "Random Selection";
+xaxis grid label= "Percent of Population" values= (0 to 1 by .1);
+yaxis grid label= "Percent of Positives" values= (0 to 1 by .1);
+ODS graphics /ANTIALIASMAX=1000;
+run;
+quit;
+ 
+%mend;
